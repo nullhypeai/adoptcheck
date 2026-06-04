@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Check, Copy, Download, ExternalLink, FileJson, GitBranch, Loader2, Search } from "lucide-react";
+import { AlertTriangle, Brain, Check, Copy, Download, ExternalLink, FileJson, GitBranch, Loader2, Search } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 import type { RepoReport } from "@/lib/types";
 
@@ -183,6 +183,48 @@ export function Scanner() {
             </div>
           </div>
 
+          <div className="section ai-section">
+            <div className="section-title-row">
+              <h2>AI Analyst</h2>
+              <span className={`analysis-badge analysis-${report.llmAnalysis.status}`}>
+                <Brain size={14} /> {analysisLabel(report.llmAnalysis.status)}
+              </span>
+            </div>
+            {report.llmAnalysis.status === "generated" ? (
+              <div className="analysis-body">
+                <p>{report.llmAnalysis.summary}</p>
+                <dl className="analysis-list">
+                  <div>
+                    <dt>README Honesty</dt>
+                    <dd>{report.llmAnalysis.readmeHonesty}</dd>
+                  </div>
+                  <div>
+                    <dt>Next Action</dt>
+                    <dd>{report.llmAnalysis.nextAction}</dd>
+                  </div>
+                  <div>
+                    <dt>Market Angle</dt>
+                    <dd>{report.llmAnalysis.nullhypeAngle}</dd>
+                  </div>
+                </dl>
+                <ul className="risk-list">
+                  {(report.llmAnalysis.adoptionRisks ?? []).map((risk) => (
+                    <li key={risk}>{risk}</li>
+                  ))}
+                </ul>
+                {report.llmAnalysis.evidenceIds?.length ? (
+                  <p className="evidence-source">Cites {report.llmAnalysis.evidenceIds.map((id) => id).join(", ")}</p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="analysis-body muted-copy">
+                {report.llmAnalysis.status === "failed"
+                  ? `LLM analysis failed, so this report is using deterministic scoring only. ${report.llmAnalysis.error ?? ""}`
+                  : "AI analyst output is unavailable for this scan. The deterministic report remains complete."}
+              </p>
+            )}
+          </div>
+
           <div className="section">
             <h2>Evidence</h2>
             <ul className="evidence-list">
@@ -223,6 +265,12 @@ export function Scanner() {
       </p>
     </main>
   );
+}
+
+function analysisLabel(status: RepoReport["llmAnalysis"]["status"]) {
+  if (status === "generated") return "Generated";
+  if (status === "failed") return "Fallback";
+  return "Not configured";
 }
 
 function DownloadLink({ report }: { report: RepoReport }) {

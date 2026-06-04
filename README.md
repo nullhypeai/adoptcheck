@@ -10,7 +10,8 @@ AdoptCheck is a deterministic-first scanner for public GitHub repositories. Past
 - GitHub API metadata, README, root files, releases, CI, license, and security policy checks
 - Evidence ledger with IDs, sources, confidence, and observations
 - JSON and Markdown report output
-- No private repo support, database, LLM calls, cloning, installs, builds, or arbitrary repo execution
+- Optional evidence-grounded LLM analyst when `OPENAI_API_KEY` is configured
+- No private repo support, database persistence, cloning, installs, builds, or arbitrary repo execution
 
 ## Local Development
 
@@ -23,9 +24,10 @@ Optional:
 
 ```bash
 GITHUB_TOKEN=ghp_xxx npm run dev
+OPENAI_API_KEY=sk_xxx npm run dev
 ```
 
-The token increases GitHub API rate limits. It is never rendered in reports.
+`GITHUB_TOKEN` increases GitHub API rate limits. `OPENAI_API_KEY` enables the optional analyst layer. Secrets are never rendered in reports.
 
 ## Checks
 

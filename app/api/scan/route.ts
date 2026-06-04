@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { GitHubApiError, fetchRepoSnapshot, parseGitHubRepo, repoInputSchema } from "@/lib/github";
-import { buildRepoReport } from "@/lib/report";
+import { generateLLMAnalysis } from "@/lib/llm";
+import { attachLLMAnalysis, buildRepoReport } from "@/lib/report";
 
 export const runtime = "nodejs";
 
@@ -9,7 +10,9 @@ export async function POST(request: Request) {
     const body = repoInputSchema.parse(await request.json());
     const parsed = parseGitHubRepo(body.repo);
     const snapshot = await fetchRepoSnapshot(parsed);
-    const report = buildRepoReport(snapshot);
+    const deterministicReport = buildRepoReport(snapshot);
+    const analysis = await generateLLMAnalysis(deterministicReport);
+    const report = attachLLMAnalysis(deterministicReport, analysis);
 
     return NextResponse.json(report);
   } catch (error) {

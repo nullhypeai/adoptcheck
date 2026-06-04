@@ -69,9 +69,25 @@ export interface RepoReport {
   risks: string[];
   recommendedAction: string;
   nullhypeAngle: string;
+  llmAnalysis: LLMAnalysis;
   evidence: EvidenceItem[];
   markdown: string;
   generatedAt: string;
+}
+
+export type LLMAnalysisStatus = "not_configured" | "generated" | "failed";
+
+export interface LLMAnalysis {
+  status: LLMAnalysisStatus;
+  model?: string;
+  generatedAt?: string;
+  summary?: string;
+  readmeHonesty?: string;
+  adoptionRisks?: string[];
+  nextAction?: string;
+  nullhypeAngle?: string;
+  evidenceIds?: string[];
+  error?: string;
 }
 
 export interface RepoSnapshot {

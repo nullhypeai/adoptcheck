@@ -1,4 +1,4 @@
-import type { CategoryScore, Confidence, EvidenceItem, RepoReport, RepoSnapshot, Verdict } from "./types";
+import type { CategoryScore, Confidence, EvidenceItem, LLMAnalysis, RepoReport, RepoSnapshot, Verdict } from "./types";
 
 const manifestFiles = [
   "package.json",
@@ -261,6 +261,9 @@ export function buildRepoReport(snapshot: RepoSnapshot): RepoReport {
     risks,
     recommendedAction,
     nullhypeAngle,
+    llmAnalysis: {
+      status: "not_configured"
+    },
     evidence,
     generatedAt: observedAt
   };
@@ -268,6 +271,20 @@ export function buildRepoReport(snapshot: RepoSnapshot): RepoReport {
   return {
     ...reportWithoutMarkdown,
     markdown: renderMarkdown(reportWithoutMarkdown)
+  };
+}
+
+export function attachLLMAnalysis(report: RepoReport, analysis: LLMAnalysis): RepoReport {
+  const evidence = analysis.status === "generated" ? [...report.evidence, llmEvidence(report, analysis)] : report.evidence;
+  const enriched = {
+    ...report,
+    llmAnalysis: analysis,
+    evidence
+  };
+
+  return {
+    ...enriched,
+    markdown: renderMarkdown(enriched)
   };
 }
 
@@ -399,6 +416,7 @@ function marketSignalClaim(snapshot: RepoSnapshot, readmeLower: string) {
 function renderMarkdown(report: Omit<RepoReport, "markdown">) {
   const scoreLines = report.scores.map((item) => `- ${item.name}: ${item.label} (${item.score}/100)`).join("\n");
   const riskLines = report.risks.length ? report.risks.map((risk) => `- ${risk}`).join("\n") : "- No major blocker appeared in the deterministic scan.";
+  const llmSection = renderLLMMarkdown(report.llmAnalysis);
   const evidenceRows = report.evidence
     .map((item) => `| ${item.id} | ${item.type} | ${item.source} | ${item.claim.replace(/\|/g, "\\|")} | ${item.confidence} |`)
     .join("\n");
@@ -424,11 +442,51 @@ ${report.recommendedAction}
 ## Nullhype Angle
 ${report.nullhypeAngle}
 
+${llmSection}
+
 ## Evidence
 | ID | Type | Source | Observation | Confidence |
 | --- | --- | --- | --- | --- |
 ${evidenceRows}
 `;
+}
+
+function llmEvidence(report: RepoReport, analysis: LLMAnalysis): EvidenceItem {
+  return {
+    id: "ev_llm_analysis",
+    type: "llm_inference",
+    source: analysis.model ?? "OpenAI Responses API",
+    claim: `Generated evidence-grounded analyst interpretation for ${report.repo.fullName}; cited evidence IDs: ${(analysis.evidenceIds ?? []).join(", ") || "none returned"}.`,
+    confidence: "medium",
+    observedAt: analysis.generatedAt ?? new Date().toISOString()
+  };
+}
+
+function renderLLMMarkdown(analysis: LLMAnalysis) {
+  if (analysis.status === "not_configured") {
+    return "## AI Analyst\nNot configured. Set `OPENAI_API_KEY` to add evidence-grounded LLM interpretation.";
+  }
+  if (analysis.status === "failed") {
+    return `## AI Analyst\nLLM analysis failed, so this report falls back to deterministic scoring. Error: ${analysis.error ?? "Unknown error"}`;
+  }
+
+  const riskLines = analysis.adoptionRisks?.length ? analysis.adoptionRisks.map((risk) => `- ${risk}`).join("\n") : "- No additional LLM risks returned.";
+  const evidenceLine = analysis.evidenceIds?.length ? `\n\nEvidence cited: ${analysis.evidenceIds.map((id) => `\`${id}\``).join(", ")}` : "";
+
+  return `## AI Analyst
+${analysis.summary ?? "No summary returned."}
+
+### README Honesty
+${analysis.readmeHonesty ?? "No README honesty analysis returned."}
+
+### Adoption Risks
+${riskLines}
+
+### Next Action
+${analysis.nextAction ?? "No next action returned."}
+
+### Market / Nullhype Angle
+${analysis.nullhypeAngle ?? "No market angle returned."}${evidenceLine}`;
 }
 
 function recencyScore(days: number | null) {
