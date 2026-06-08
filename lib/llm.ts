@@ -1,55 +1,57 @@
 import type { LLMAnalysis, RepoReport } from "./types";
 
-interface OpenAIResponse {
-  output_text?: string;
-  output?: Array<{
-    content?: Array<{
-      type?: string;
-      text?: string;
-    }>;
+interface OpenRouterResponse {
+  choices?: Array<{
+    message?: {
+      content?: string | null;
+    };
   }>;
   error?: {
     message?: string;
   };
 }
 
-const defaultModel = "gpt-4o-mini";
+const defaultModel = "openai/gpt-5.4-nano";
 
 export async function generateLLMAnalysis(report: RepoReport): Promise<LLMAnalysis> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     return { status: "not_configured" };
   }
 
-  const model = process.env.OPENAI_MODEL || defaultModel;
+  const model = process.env.OPENROUTER_MODEL || defaultModel;
   const generatedAt = new Date().toISOString();
 
   try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "https://adoptcheck.nullhype.tech",
+        "X-OpenRouter-Title": process.env.OPENROUTER_APP_NAME || "AdoptCheck"
       },
       body: JSON.stringify({
         model,
-        instructions:
-          "You are the optional AdoptCheck analyst layer. The deterministic scanner is the source of truth. Do not change the verdict, confidence, scores, or risks. Interpret only the provided structured report. Every substantive claim must be grounded in the supplied evidence IDs. Keep the language concise, practical, and adoption-focused.",
-        input: [
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are the optional AdoptCheck analyst layer. The deterministic scanner is the source of truth. Do not change the verdict, confidence, scores, or risks. Interpret only the provided structured report. Every substantive claim must be grounded in the supplied evidence IDs. Keep the language concise, practical, and adoption-focused."
+          },
           {
             role: "user",
-            content: [
-              {
-                type: "input_text",
-                text: JSON.stringify(buildLLMPayload(report))
-              }
-            ]
+            content: JSON.stringify(buildLLMPayload(report))
           }
         ],
-        max_output_tokens: 900,
-        text: {
-          format: {
-            type: "json_schema",
+        max_completion_tokens: 900,
+        temperature: 0.2,
+        provider: {
+          require_parameters: true
+        },
+        response_format: {
+          type: "json_schema",
+          json_schema: {
             name: "adoptcheck_llm_analysis",
             strict: true,
             schema: analysisSchema
@@ -58,13 +60,13 @@ export async function generateLLMAnalysis(report: RepoReport): Promise<LLMAnalys
       })
     });
 
-    const body = (await response.json()) as OpenAIResponse;
+    const body = (await response.json()) as OpenRouterResponse;
     if (!response.ok) {
       return {
         status: "failed",
         model,
         generatedAt,
-        error: body.error?.message ?? `OpenAI returned ${response.status}`
+        error: body.error?.message ?? `OpenRouter returned ${response.status}`
       };
     }
 
@@ -123,19 +125,11 @@ function buildLLMPayload(report: RepoReport) {
   };
 }
 
-function extractOutputText(body: OpenAIResponse) {
-  if (body.output_text) {
-    return body.output_text;
-  }
-
-  const text = body.output
-    ?.flatMap((item) => item.content ?? [])
-    .filter((content) => content.type === "output_text" || content.text)
-    .map((content) => content.text ?? "")
-    .join("");
+function extractOutputText(body: OpenRouterResponse) {
+  const text = body.choices?.[0]?.message?.content;
 
   if (!text) {
-    throw new Error("OpenAI response did not include output text.");
+    throw new Error("OpenRouter response did not include message content.");
   }
 
   return text;

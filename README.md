@@ -24,10 +24,16 @@ Optional:
 
 ```bash
 GITHUB_TOKEN=ghp_xxx npm run dev
-OPENAI_API_KEY=sk_xxx npm run dev
+OPENROUTER_API_KEY=sk-or-v1-xxx npm run dev
 ```
 
-`GITHUB_TOKEN` increases GitHub API rate limits. `OPENAI_API_KEY` enables the optional analyst layer. Secrets are never rendered in reports.
+`GITHUB_TOKEN` increases GitHub API rate limits. `OPENROUTER_API_KEY` enables the optional analyst layer through OpenRouter. Secrets are never rendered in reports.
+
+The default analyst model is:
+
+```bash
+OPENROUTER_MODEL=openai/gpt-5.4-nano
+```
 
 ## Checks
 
