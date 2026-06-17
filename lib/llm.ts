@@ -11,7 +11,7 @@ interface OpenRouterResponse {
   };
 }
 
-const defaultModel = "openai/gpt-5.4-nano";
+const defaultModel = "openai/gpt-mini-latest";
 
 export async function generateLLMAnalysis(report: RepoReport): Promise<LLMAnalysis> {
   const apiKey = process.env.OPENROUTER_API_KEY;

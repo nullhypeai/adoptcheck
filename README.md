@@ -10,7 +10,7 @@ AdoptCheck is a deterministic-first scanner for public GitHub repositories. Past
 - GitHub API metadata, README, root files, releases, CI, license, and security policy checks
 - Evidence ledger with IDs, sources, confidence, and observations
 - JSON and Markdown report output
-- Optional evidence-grounded LLM analyst when `OPENAI_API_KEY` is configured
+- Optional evidence-grounded LLM analyst when `OPENROUTER_API_KEY` is configured
 - No private repo support, database persistence, cloning, installs, builds, or arbitrary repo execution
 
 ## Local Development
@@ -20,20 +20,25 @@ npm install
 npm run dev
 ```
 
-Optional:
+AdoptCheck runs fully in deterministic mode with **no configuration** — the scanner is the source of truth and works without any API keys.
+
+## Configuration
+
+Copy `.env.example` to `.env.local` and fill in the values you need. `.env.local` is gitignored and loaded automatically by `next dev` / `next build`.
 
 ```bash
-GITHUB_TOKEN=ghp_xxx npm run dev
-OPENROUTER_API_KEY=sk-or-v1-xxx npm run dev
+cp .env.example .env.local
 ```
 
-`GITHUB_TOKEN` increases GitHub API rate limits. `OPENROUTER_API_KEY` enables the optional analyst layer through OpenRouter. Secrets are never rendered in reports.
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `OPENROUTER_API_KEY` | No | — | Enables the optional analyst layer via [OpenRouter](https://openrouter.ai/keys). Without it the analyst is skipped. |
+| `OPENROUTER_MODEL` | No | `openai/gpt-mini-latest` | Analyst model. Must be a valid OpenRouter model id that supports structured (`json_schema`) output. |
+| `OPENROUTER_SITE_URL` | No | `https://adoptcheck.nullhype.tech` | Attribution metadata shown on your OpenRouter dashboard. |
+| `OPENROUTER_APP_NAME` | No | `AdoptCheck` | Attribution metadata shown on your OpenRouter dashboard. |
+| `GITHUB_TOKEN` | No | — | Raises the GitHub API rate limit from 60 to 5000 req/hour (public read scope is enough). |
 
-The default analyst model is:
-
-```bash
-OPENROUTER_MODEL=openai/gpt-5.4-nano
-```
+The analyst layer never overrides the deterministic verdict, scores, or risks — it only interprets the supplied evidence. Secrets are never rendered in reports.
 
 ## Checks
 
